@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodKwik</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <style>
+        html, body { min-height: 100%; }
+        /* Stop the elastic "bounce" at the very top and bottom that exposes the background */
+        html, body { overscroll-behavior: none; }
+        body {
+            background-color: #1f7a3d;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        #navbar { position: sticky; top: 0; z-index: 10; }
+        .nav-link { cursor: pointer; }
+        .navbar-nav { align-items: center; }
+        .brand-box { display: inline-flex; align-items: center; gap: 8px; background: #fff; border-radius: 10px;
+                     padding: 4px 14px 4px 8px; margin: 0 22px 0 0; font-weight: 800; font-size: 1.3rem; line-height: 1; color: #157347; }
+        .brand-box:hover { color: #157347; }
+        .brand-box svg { width: 34px; height: 34px; flex: none; }
+        .brand-box b { color: #e08a00; font-weight: 800; }
+
+        /* Only one view is visible at a time */
+        .view { display: none; flex: 1; }
+        .view.active { display: block; }
+
+        /* HOME: only the name */
+        #home.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 56px);
+        }
+        #home h1 {
+            font-size: clamp(48px, 12vw, 120px);
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 3px;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            text-align: center;
+            /* FIX: removed trailing comma that made text-shadow invalid */
+            text-shadow: 0 1px 0 #ccc, 0 2px 0 #bbb, 0 3px 0 #aaa, 0 4px 0 #999, 0 8px 12px rgba(0,0,0,.35);
+        }
+
+
+        #products { background: linear-gradient(rgba(240,249,241,.94), rgba(255,247,236,.94)), url("./vegetable%20background.jpg") center/cover; }
+        #products h1 { font-size: 50px; letter-spacing: 2px; font-weight: 700; }
+        .card img { width: 200px; height: 200px; object-fit: cover; margin-top: 15px; }
+        .card {
+            width: 250px;
+            min-height: 300px;
+            background: #e5e5e5 !important;
+            border: none !important;
+            box-shadow: 15px 20px 20px rgba(0,0,0,.3);
+            border-radius: 20px;
+            overflow: hidden;
+            align-items: center;
+            margin: 20px auto;
+        }
+        .card:hover {
+            box-shadow: inset 5px 5px 10px rgba(0,0,0,.3), inset -4px 14px 10px white;
+            transition: .2s;
+        }
+        .card-body { width: 100%; }
+
+        /* FIX: was "#contact.img" (invalid intent) */
+        #contact img { max-width: 100%; }
+        #contact form { display: flex; flex-direction: column; }
+        #contact input, #contact textarea { margin: 10px 0; }
+        #contact h1 { color: #fff; font-weight: 800; }
+
+
+        .qty-price-box {
+            border: 1px solid #ddd; border-radius: 30px; padding: 6px 12px; background: #fff;
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+        }
+        .qty-control { display: flex; align-items: center; }
+        .qty-btn { border-radius: 50%; width: 26px; height: 26px; line-height: 1; padding: 0; }
+        .qty-display { min-width: 55px; text-align: center; font-weight: 500; font-size: 14px; }
+        .price-display { font-weight: 700; }
+        .add-to-cart-btn { width: 100%; margin-top: 10px; }
+
+        #cart-icon { color: #fff; display: flex; align-items: center; margin-left: 15px; font-size: 26px; }
+        .no-results { text-align: center; padding: 20px; display: none; }
+
+        /* ---- Enhancements ---- */
+        .view.active { animation: viewFade .35s ease; }
+        @keyframes viewFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        .nav-link { transition: color .2s; }
+        .nav-link.active { border-bottom: 2px solid #ffc107; }
+        .card { transition: transform .25s, box-shadow .25s; }
+        .card:hover { transform: translateY(-6px); }
+        .card img { border-radius: 50%; box-shadow: 0 6px 14px rgba(0,0,0,.25); }
+        .price-display { color: #198754; }
+        .qty-btn:hover { background: #198754; color: #fff; border-color: #198754; }
+        #cart-icon { cursor: pointer; padding: 4px 10px; border-radius: 20px; transition: background .2s; }
+        #cart-icon:hover { background: rgba(255,255,255,.15); }
+        .cart-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .cart-empty { text-align: center; color: #777; margin-top: 40px; }
+        #toast-msg { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: #198754; color: #fff;
+                     padding: 10px 22px; border-radius: 30px; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 2000; }
+        #toast-msg.show { opacity: 1; }
+        a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #ffc107; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+        @media (max-width: 576px) { .card { width: 90%; } #products h1, #about h1 { font-size: 34px; } }
+
+        /* ---- Logo, About, glass ---- */
+        .glass { background: rgba(255,255,255,.13); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+                 border: 1px solid rgba(255,255,255,.3); border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.25); color: #fff; }
+        .brand-lockup { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .logo-mark { width: clamp(90px, 16vw, 170px); height: auto; filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); animation: float 4s ease-in-out infinite; }
+        @keyframes float { 50% { transform: translateY(-10px); } }
+        #home h1 .k, .logo-text .k { color: #ffd60a; }
+        #home h1 { margin: 0; }
+        .section-title { font-weight: 800; color: #fff; text-align: center; }
+        .section-title::after { content: ""; display: block; width: 70px; height: 4px; background: #ffd60a; border-radius: 4px; margin: 10px auto 0; }
+        .about-hero { text-align: center; padding: 50px 15px 20px; color: #fff; }
+        .about-hero .logo-mark { width: 120px; }
+        .about-hero h1 { font-weight: 800; font-size: clamp(34px, 6vw, 56px); margin-top: 10px; }
+        .about-hero p { font-size: 1.25rem; color: #ffe9a8; }
+        .stat { text-align: center; padding: 22px 10px; }
+        .stat b { display: block; font-size: 2.2rem; color: #ffd60a; }
+        .feature { padding: 24px; height: 100%; transition: transform .25s, background .25s; }
+        .feature:hover { transform: translateY(-6px); background: rgba(255,255,255,.22); }
+        .feature .ico { font-size: 2.2rem; }
+        .feature h5 { font-weight: 700; margin: 8px 0; }
+        .feature p, .about-card p { color: #f1f1f1; margin: 0; }
+        .about-card { padding: 28px; height: 100%; }
+        .about-card h4 { color: #ffd60a; font-weight: 700; }
+        #contact .col-lg-6:last-child { background: rgba(255,255,255,.14); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.3);
+                                          border-radius: 22px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+        #contact img { border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+
+        /* ---- Products filter, Cart page, Footer ---- */
+        .filter-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; font-weight: 600; }
+        .filter-bar select { width: 220px; }
+        #cart h1 { color: #fff; font-weight: 800; }
+        .cart-line { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.25); }
+        .cart-line:last-child { border-bottom: 0; }
+        .cart-line .name { flex: 1 1 160px; }
+        .cart-line .name small { color: #e0e0e0; }
+        .cart-qty { display: flex; align-items: center; gap: 8px; }
+        .cart-qty span { min-width: 60px; text-align: center; font-weight: 600; }
+        .cart-line .amt { min-width: 70px; text-align: right; font-weight: 700; color: #ffd60a; }
+        .site-footer { background: #282a35; color: #fff; padding: 40px 15px 20px; margin-top: 40px; }
+        .site-footer a { color: #fff; text-decoration: none; font-size: 13px; }
+        .site-footer a:hover { color: #ffff99; text-decoration: underline; }
+        .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px 40px; margin-bottom: 35px; }
+        .foot-top a { color: #ffff99; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .3px; }
+        .foot-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 22px; }
+        .foot-brand svg { width: 44px; height: 44px; }
+        .foot-col h5 { font-size: 19px; font-weight: 700; margin-bottom: 12px; text-align: center; }
+        .foot-col ul { list-style: none; padding: 0; margin: 0 0 24px; text-align: center; }
+        .foot-col li { margin: 5px 0; }
+        .foot-social { display: flex; justify-content: center; align-items: center; gap: 18px; flex-wrap: wrap; margin: 10px 0 20px; }
+        .foot-social svg { width: 26px; height: 26px; }
+        .foot-social .txt { font-size: 15px; }
+        .foot-note { max-width: 900px; margin: 0 auto; text-align: center; font-size: 12px; color: #c9c9c9; line-height: 1.6; }
+
+        /* ---- Count, scrolling ---- */
+        #cart-count { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-left: 6px; border-radius: 50%;
+                      background: #ffd60a; color: #222; font-size: 14px; font-weight: 800; line-height: 1; }
+        html { scroll-behavior: smooth; scroll-padding-top: 70px; scrollbar-width: thin; scrollbar-color: #2e9e4f #1b1d24; }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #1b1d24; }
+        ::-webkit-scrollbar-thumb { background: #2e9e4f; border-radius: 10px; border: 2px solid #1b1d24; }
+        ::-webkit-scrollbar-thumb:hover { background: #3fbf63; }
+        body::before {
+            content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background-image:
+                radial-gradient(circle at 15% 10%, rgba(255,214,10,.22), transparent 40%),
+                radial-gradient(circle at 85% 90%, rgba(255,255,255,.18), transparent 45%),
+                linear-gradient(160deg, rgba(8,64,32,.72), rgba(34,139,70,.55)),
+                url("./vegetable%20background.jpg");
+            background-size: cover; background-position: center;
+        }
+        #to-top { position: fixed; right: 20px; bottom: 20px; width: 46px; height: 46px; border: 0; border-radius: 50%;
+                  background: #ffc107; color: #222; font-size: 22px; font-weight: 700; line-height: 1; box-shadow: 0 6px 16px rgba(0,0,0,.35);
+                  opacity: 0; transform: translateY(20px); pointer-events: none; transition: opacity .25s, transform .25s; z-index: 1500; }
+        #to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+        @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <linearGradient id="fkg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7bd88f"/><stop offset="1" stop-color="#1f8a45"/></linearGradient>
+        <symbol id="fk-logo" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="30" fill="url(#fkg)" stroke="#fff" stroke-width="2.5"/>
+            <path d="M20 46C14 30 24 16 46 14C48 34 38 46 20 46Z" fill="#fff"/>
+            <path d="M20 46L40 22" stroke="#2e9e4f" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M44 34L34 48H41L38 58L50 42H43Z" fill="#ffd60a" stroke="#1f8a45" stroke-width="1.5" stroke-linejoin="round"/>
+        </symbol>
+    </defs>
+</svg>
+
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark" id="navbar">
+    <div class="container-fluid">
+        <ul class="navbar-nav">
+            <li class="nav-item" id="app"><a class="navbar-brand brand-box" href="#" data-view="home" aria-label="FoodKwik home"><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#fk-logo"/></svg><span>Food<b>Kwik</b></span></a></li>
+            <li class="nav-item"><a class="nav-link active" href="#" data-view="home">Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-view="about">About</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-view="products" data-cat="all" data-q="">Products</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-view="cart">Cart</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-view="contact">Contact</a></li>
+        </ul>
+        <form class="d-flex" onsubmit="return false;">
+            <input type="text" id="search-input" class="form-control me-2" placeholder="Search" oninput="searchProducts()">
+            <button class="btn btn-warning" type="button" onclick="searchProducts()">Search</button>
+        </form>
+        <div id="cart-icon" role="button" tabindex="0" data-view="cart" aria-label="Open cart">
+            🛒<span id="cart-count" aria-hidden="true">0</span>
+        </div>
+    </div>
+</nav>
+
+<!-- HOME -->
+<section id="home" class="view active">
+    <div class="brand-lockup">
+        <svg class="logo-mark" role="img" aria-label="FoodKwik logo"><use href="#fk-logo"/></svg>
+        <h1>Food<span class="k">Kwik</span></h1>
+    </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="view">
+    <div class="container pb-5">
+        <div class="about-hero">
+            <svg class="logo-mark" role="img" aria-label="FoodKwik logo"><use href="#fk-logo"/></svg>
+            <h1>About Food<span style="color:#ffd60a">Kwik</span></h1>
+            <p>Fresh produce, at your door fast</p>
+        </div>
+
+        <div class="glass p-4 p-md-5 my-4">
+            <h3 class="fw-bold" style="color:#ffd60a">Our story</h3>
+            <p class="mb-0 fs-5">FoodKwik is an online store for fruits and vegetables. We started with a simple idea: buying fresh produce shouldn't mean carrying heavy bags, sorting through tired stock, or wondering how long the food has been sitting on a shelf. You choose, we pack and deliver &mdash; crisp, ripe and full of flavour.</p>
+        </div>
+
+        <div class="row g-3 my-2">
+            <div class="col-6 col-md-3"><div class="glass stat"><b id="stat-products">34</b>Fresh products</div></div>
+            <div class="col-6 col-md-3"><div class="glass stat"><b>100%</b>Quality checked</div></div>
+            <div class="col-6 col-md-3"><div class="glass stat"><b>Kwik</b>Fast delivery</div></div>
+            <div class="col-6 col-md-3"><div class="glass stat"><b>Local</b>Farm sourcing</div></div>
+        </div>
+
+        <h2 class="section-title my-5">Why choose us</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">🥬</div><h5>Fresh every day</h5><p>We source produce regularly and check each item before it's packed.</p></div></div>
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">⚡</div><h5>Fast delivery</h5><p>The "Kwik" in our name is a promise. Your order reaches you quickly, so nothing sits around.</p></div></div>
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">💰</div><h5>Fair prices</h5><p>We work directly with local farmers and trusted suppliers to cut out extra costs.</p></div></div>
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">🛒</div><h5>Easy ordering</h5><p>Browse, add to your basket, and check out in a few taps.</p></div></div>
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">✅</div><h5>Honest quality</h5><p>If something isn't fresh when it arrives, tell us and we'll make it right.</p></div></div>
+            <div class="col-md-6 col-lg-4"><div class="glass feature"><div class="ico">🌱</div><h5>Seasonal &amp; local</h5><p>Seasonal produce tastes better, costs less, and travels a shorter distance to you.</p></div></div>
+        </div>
+
+        <div class="row g-4 my-4">
+            <div class="col-md-6"><div class="glass about-card"><h4>Where our produce comes from</h4><p>We buy from local farms and trusted growers in your region and choose seasonal produce wherever we can.</p></div></div>
+            <div class="col-md-6"><div class="glass about-card"><h4>Our promise</h4><p>Good food starts with fresh ingredients. FoodKwik aims to make fresh produce the easiest part of your day.</p></div></div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-white fs-5">Start shopping today &mdash; we'll take care of the rest.</p>
+            <a href="#" class="btn btn-warning btn-lg me-2" data-view="products" data-cat="vegetables">Shop Vegetables</a>
+            <a href="#" class="btn btn-light btn-lg" data-view="products" data-cat="fruits">Shop Fruits</a>
+        </div>
+    </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products" class="view">
+    <div class="container py-4">
+        <h1 class="text-center my-4" id="products-title">ALL PRODUCTS</h1>
+        <div class="filter-bar">
+            <label for="category-select">Category:</label>
+            <select id="category-select" class="form-select" onchange="searchProducts()">
+                <option value="all">All products</option>
+                <option value="vegetables">Vegetables</option>
+                <option value="fruits">Fruits</option>
+            </select>
+        </div>
+        <div class="row product-grid" id="product-grid"></div>
+        <p class="no-results">No matching items found.</p>
+    </div>
+</section>
+
+<!-- CART -->
+<section id="cart" class="view">
+    <div class="container py-5">
+        <h1 class="section-title mb-5">YOUR CART</h1>
+        <div class="row g-4">
+            <div class="col-lg-8"><div class="glass p-3 p-md-4" id="cart-items"></div></div>
+            <div class="col-lg-4">
+                <div class="glass p-4">
+                    <h4 class="fw-bold mb-3" style="color:#ffd60a">Order summary</h4>
+                    <div class="d-flex justify-content-between mb-2"><span>Items</span><span id="cart-count-text">0</span></div>
+                    <div class="d-flex justify-content-between fw-bold fs-4 mb-3"><span>Total</span><span>₹<span id="cart-page-total">0</span></span></div>
+                    <button class="btn btn-warning w-100 mb-2" onclick="checkout()">Place Order</button>
+                    <button class="btn btn-outline-light w-100 mb-2" onclick="clearCart()">Clear Cart</button>
+                    <a href="#" class="btn btn-light w-100" data-view="products">Continue Shopping</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" class="view">
+    <div class="container py-5">
+        <div class="row align-items-center">
+            <div class="col-lg-6 col-12">
+                <img src="./fru&veges_img.jpg" class="img-fluid" alt="Fruits and vegetables">
+            </div>
+            <div class="col-lg-6 col-12">
+                <h1>CONTACT US</h1>
+                <form class="mb-3" onsubmit="event.preventDefault(); this.reset(); alert('Thank you for your feedback!');">
+                    <input type="text" class="form-control" placeholder="Enter your Name" required>
+                    <input type="email" class="form-control" placeholder="Enter your Mail id" required>
+                    <textarea class="form-control" rows="4" placeholder="Enter your feedback" required></textarea>
+                    <button class="btn btn-warning" type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ORDER DETAILS -->
+<div class="modal fade" id="orderModal" tabindex="-1" aria-labelledby="order-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="order-title">Customer details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="order-form" novalidate onsubmit="submitOrder(event)">
+                    <p class="mb-3">Order total: <strong>₹<span id="order-total">0</span></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label" for="cust-name">Full name</label>
+                        <input id="cust-name" class="form-control" required maxlength="60" autocomplete="name" placeholder="Enter your name">
+                        <div class="invalid-feedback">Please enter your name.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="cust-mobile">Mobile number</label>
+                        <input id="cust-mobile" type="tel" inputmode="numeric" class="form-control" required pattern="[6-9][0-9]{9}" maxlength="10" autocomplete="tel-national" placeholder="10-digit mobile number">
+                        <div class="invalid-feedback">Enter a valid 10-digit mobile number.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="cust-address">Delivery address</label>
+                        <textarea id="cust-address" class="form-control" rows="3" required minlength="10" maxlength="250" autocomplete="street-address" placeholder="House no, street, area, city, pincode"></textarea>
+                        <div class="invalid-feedback">Please enter your full delivery address.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Payment mode</label>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="pay" id="pay-cod" value="Cash on Delivery" checked><label class="form-check-label" for="pay-cod">Cash on Delivery</label></div>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="pay" id="pay-upi" value="UPI"><label class="form-check-label" for="pay-upi">UPI</label></div>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="pay" id="pay-card" value="Debit / Credit Card"><label class="form-check-label" for="pay-card">Debit / Credit Card</label></div>
+                    </div>
+                    <button class="btn btn-success w-100" type="submit">Confirm Order</button>
+                </form>
+                <div id="order-success" class="text-center d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<button id="to-top" type="button" aria-label="Back to top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">↑</button>
+<div id="toast-msg" role="status"></div>
+
+<footer class="site-footer">
+    <div class="container">
+        <div class="foot-top">
+            <span class="foot-brand"><svg><use href="#fk-logo"/></svg>Food<span style="color:#ffd60a">Kwik</span></span>
+            <a href="#" data-view="products" data-cat="all" data-q="">Products</a>
+            <a href="#" data-view="about">About</a>
+            <a href="#" data-view="cart">Cart</a>
+            <a href="#" data-view="contact">Contact Us</a>
+        </div>
+        <div class="row">
+            <div class="col-6 col-md-3 foot-col"><h5>Shop</h5><ul><li><a href="#" data-view="products" data-cat="all" data-q="">All Products</a></li><li><a href="#" data-view="products" data-cat="vegetables" data-q="">Vegetables</a></li><li><a href="#" data-view="products" data-cat="fruits" data-q="">Fruits</a></li><li><a href="#" data-view="cart">My Cart</a></li></ul></div>
+            <div class="col-6 col-md-3 foot-col"><h5>Top Vegetables</h5><ul><li><a href="#" data-view="products" data-cat="all" data-q="tomato">Tomato</a></li><li><a href="#" data-view="products" data-cat="all" data-q="onion">Onion</a></li><li><a href="#" data-view="products" data-cat="all" data-q="potato">Potato</a></li><li><a href="#" data-view="products" data-cat="all" data-q="carrot">Carrot</a></li><li><a href="#" data-view="products" data-cat="all" data-q="spinach">Spinach</a></li></ul></div>
+            <div class="col-6 col-md-3 foot-col"><h5>Top Fruits</h5><ul><li><a href="#" data-view="products" data-cat="all" data-q="apple">Apple</a></li><li><a href="#" data-view="products" data-cat="all" data-q="banana">Banana</a></li><li><a href="#" data-view="products" data-cat="all" data-q="mango">Mango</a></li><li><a href="#" data-view="products" data-cat="all" data-q="orange">Orange</a></li><li><a href="#" data-view="products" data-cat="all" data-q="grapes">Grapes</a></li></ul></div>
+            <div class="col-6 col-md-3 foot-col"><h5>Company</h5><ul>
+                <li><a href="#" data-view="about">About Us</a></li>
+                <li><a href="#" data-view="about">Why Choose Us</a></li>
+                <li><a href="#" data-view="contact">Contact Us</a></li>
+                <li><a href="#" data-view="contact">Send Feedback</a></li></ul></div>
+        </div>
+        <div class="foot-social">
+            <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="4" fill="#fff"/><path d="M10 9.5v5l4.5-2.5z" fill="#282a35"/></svg></a>
+            <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path fill="#fff" d="M14 8h3V4h-3c-2.8 0-4 1.8-4 4v2H7v4h3v8h4v-8h3l1-4h-4V8.5c0-.3.2-.5.5-.5z"/></svg></a>
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="3.6" fill="none" stroke="#fff" stroke-width="2"/><circle cx="17" cy="7" r="1.2" fill="#fff"/></svg></a>
+            <a class="txt" href="#" data-view="about">ABOUT</a>
+            <a class="txt" href="#" data-view="contact">CONTACT</a>
+            <a class="txt" href="#" data-view="cart">CART</a>
+        </div>
+        <p class="foot-note">FoodKwik is optimized for fresh, quality produce. Prices and availability may change with the season and are reviewed regularly. We cannot guarantee that every item will always be in stock. While using FoodKwik, you agree to have read and accepted our delivery terms and privacy practices.<br>Copyrights @Lavsforever for FoodKwik since 2026. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    // [name, image file, price per 1 kg (₹), step in grams]
+    const vegetables = [
+        ["Tomato", "tomato.jpg", 40, 500], ["Capsicum", "capsicum.jpg", 60, 500],
+        ["Brinjal", "brinjal.jpg", 50, 500], ["Chilli", "chilli.jpg", 120, 250],
+        ["Garlic", "garlic.jpg", 200, 250], ["Ladies finger", "ladies finger.jpg", 60, 500],
+        ["Onion", "onion.jpg", 35, 500], ["Beetroot", "beetroot.jpg", 45, 500],
+        ["Cabbage", "cabbage.jpg", 30, 500], ["Carrot", "carrot.jpg", 50, 500],
+        ["Cauli Flower", "cauliflower.jpg", 40, 500], ["Coriander", "coriander.jpg", 200, 100],
+        ["Drumstick", "drumstick.jpg", 80, 250], ["Ginger", "ginger.jpg", 180, 250],
+        ["Mushroom", "mushroom.jpg", 220, 500], ["Potato", "potato.jpg", 30, 500],
+        ["Spinach", "spinach.jpg", 60, 250]
+    ];
+    const fruits = [
+        ["Apple", "apple.jpg", 200, 500], ["Avocado", "avacado.jpg", 300, 250],
+        ["Banana", "banana.jpg", 60, 500], ["Dragon fruit", "dragon fruit.jpg", 400, 250],
+        ["Grapes", "grapes.jpg", 140, 500], ["Guava", "guava.jpg", 80, 500],
+        ["Lichee", "lichee.jpg", 300, 250], ["Mango", "mango.jpg", 150, 500],
+        ["Papaya", "papaya.jpg", 50, 500], ["Strawberry", "strawberry.jpg", 400, 250],
+        ["Watermelon", "watermelon.jpg", 30, 1000], ["Cherry", "cherry.jpg", 800, 250],
+        ["Kiwi", "kiwi.jpg", 500, 250], ["Orange", "orange.jpg", 120, 500],
+        ["Pears", "pears.jpg", 160, 500], ["Pine apple", "pineapple.jpg", 60, 1000],
+        ["Pomegranate", "pomegranate.jpg", 180, 500]
+    ];
+
+    const fmtQty = g => g >= 1000 ? (g / 1000) + ' kg' : g + ' g';
+    const calcPrice = (unit, g) => Math.round(unit * g / 1000);
+
+    function cardHTML([name, img, unit, step], cat) {
+        return `
+            <div class="col-lg-4 col-md-6 col-12 product-col" data-name="${name.toLowerCase()}" data-cat="${cat}">
+                <div class="card">
+                    <img src="./${encodeURI(img)}" class="card-img-top" alt="${name}">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">${name}</h5>
+                        <div class="qty-price-box" data-unit-price="${unit}" data-step="${step}" data-qty="${step}">
+                            <div class="qty-control">
+                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(this,-1)">−</button>
+                                <span class="qty-display">${fmtQty(step)}</span>
+                                <button class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(this,1)">+</button>
+                            </div>
+                            <span class="price-display">₹${calcPrice(unit, step)}</span>
+                        </div>
+                        <button class="btn btn-primary add-to-cart-btn" onclick="addToCart(this)">Add to Cart</button>
+                    </div>
+                </div>
+            </div>`;
+    }
+    document.getElementById('product-grid').innerHTML =
+        vegetables.map(p => cardHTML(p, 'vegetables')).join('') + fruits.map(p => cardHTML(p, 'fruits')).join('');
+
+    // ---------- View switching (no scrolling, no new tab) ----------
+    function showView(name) {
+        document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name));
+        document.querySelectorAll('.nav-link[data-view]').forEach(l => l.classList.toggle('active', l.dataset.view === name));
+        window.scrollTo(0, 0);
+    }
+    document.querySelectorAll('[data-view]').forEach(l =>
+        l.addEventListener('click', e => { e.preventDefault(); showView(l.dataset.view); }));
+
+    // Footer / button links can preset the category and search text
+    document.querySelectorAll('[data-cat], [data-q]').forEach(l => l.addEventListener('click', () => {
+        if ('cat' in l.dataset) document.getElementById('category-select').value = l.dataset.cat;
+        if ('q' in l.dataset) document.getElementById('search-input').value = l.dataset.q;
+        searchProducts();
+    }));
+
+    // ---------- Search + category filter ----------
+    function searchProducts() {
+        const q = document.getElementById('search-input').value.trim().toLowerCase();
+        const cat = document.getElementById('category-select').value;
+        if (q && document.querySelector('.view.active').id !== 'products') showView('products');
+        let shown = 0;
+        document.querySelectorAll('.product-col').forEach(c => {
+            const ok = (cat === 'all' || c.dataset.cat === cat) && c.dataset.name.includes(q);
+            c.style.display = ok ? '' : 'none';
+            if (ok) shown++;
+        });
+        document.querySelector('#products .no-results').style.display = shown ? 'none' : 'block';
+        document.getElementById('products-title').textContent = cat === 'all' ? 'ALL PRODUCTS' : cat.toUpperCase();
+    }
+
+    // ---------- Quantity & cart ----------
+    let cart = {};
+    try { cart = JSON.parse(localStorage.getItem('foodkwik-cart')) || {}; } catch (e) { cart = {}; }
+
+    function toast(msg) {
+        const t = document.getElementById('toast-msg');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    function changeQty(btn, direction) {
+        const box = btn.closest('.qty-price-box');
+        const step = parseInt(box.dataset.step);
+        const unit = parseFloat(box.dataset.unitPrice);
+        let qty = parseInt(box.dataset.qty) + direction * step;
+        if (qty < step) qty = step;
+        box.dataset.qty = qty;
+        box.querySelector('.qty-display').textContent = fmtQty(qty);
+        box.querySelector('.price-display').textContent = '₹' + calcPrice(unit, qty);
+    }
+
+    function addToCart(btn) {
+        const body = btn.closest('.card-body');
+        const box = body.querySelector('.qty-price-box');
+        const name = body.querySelector('.card-title').textContent;
+        const qty = parseInt(box.dataset.qty);
+        const unit = parseFloat(box.dataset.unitPrice);
+        const step = parseInt(box.dataset.step);
+
+        if (cart[name]) cart[name].qty += qty;
+        else cart[name] = { qty, unit, step };
+        updateCartUI();
+        toast(name + ' added to cart');
+
+    }
+
+    // Buttons stay "Added ✓" for as long as the product is in the cart
+    function syncAddedButtons() {
+        document.querySelectorAll('.product-col').forEach(c => {
+            const name = c.querySelector('.card-title').textContent;
+            const btn = c.querySelector('.add-to-cart-btn');
+            const added = !!cart[name];
+            btn.textContent = added ? 'Added ✓' : 'Add to Cart';
+            btn.classList.toggle('btn-success', added);
+            btn.classList.toggle('btn-primary', !added);
+        });
+    }
+
+    // dir: 1 = more, -1 = less, 0 = remove
+    function cartAction(btn, dir) {
+        const name = btn.dataset.name, item = cart[name];
+        if (!item) return;
+        if (dir === 0) delete cart[name];
+        else { const step = item.step || 250; item.qty = Math.max(step, item.qty + dir * step); }
+        updateCartUI();
+    }
+
+    function updateCartUI() {
+        const entries = Object.entries(cart);
+        const total = Math.round(entries.reduce((s, [, i]) => s + i.unit * i.qty / 1000, 0));
+        document.getElementById('cart-icon').setAttribute('aria-label', 'Open cart, ' + entries.length + ' items');
+        document.getElementById('cart-page-total').textContent = total;
+        document.getElementById('cart-count').textContent = entries.length;
+        document.getElementById('cart-count-text').textContent = entries.length;
+        document.getElementById('cart-items').innerHTML = entries.length ? entries.map(([name, i]) => `
+            <div class="cart-line">
+                <div class="name"><strong>${name}</strong><br><small>₹${i.unit} per kg</small></div>
+                <div class="cart-qty">
+                    <button class="btn btn-sm btn-outline-light qty-btn" data-name="${name}" onclick="cartAction(this,-1)" aria-label="Less ${name}">−</button>
+                    <span>${fmtQty(i.qty)}</span>
+                    <button class="btn btn-sm btn-outline-light qty-btn" data-name="${name}" onclick="cartAction(this,1)" aria-label="More ${name}">+</button>
+                </div>
+                <div class="amt">₹${calcPrice(i.unit, i.qty)}</div>
+                <button class="btn btn-sm btn-outline-danger" data-name="${name}" onclick="cartAction(this,0)" aria-label="Remove ${name}">✕</button>
+            </div>`).join('') : `
+            <div class="text-center py-5">
+                <div style="font-size:3rem">🛒</div>
+                <h4 class="my-3">Your cart is empty</h4>
+                <a href="#" class="btn btn-warning" data-view="products">Browse products</a>
+            </div>`;
+        document.querySelectorAll('#cart-items [data-view]').forEach(l =>
+            l.addEventListener('click', e => { e.preventDefault(); showView(l.dataset.view); }));
+        syncAddedButtons();
+        try { localStorage.setItem('foodkwik-cart', JSON.stringify(cart)); } catch (e) {}
+    }
+    function cartTotal() {
+        return Math.round(Object.values(cart).reduce((t, i) => t + i.unit * i.qty / 1000, 0));
+    }
+    function clearCart() { cart = {}; updateCartUI(); }
+
+    // "Place Order" opens the customer details form
+    function checkout() {
+        if (!Object.keys(cart).length) { toast('Your cart is empty'); return; }
+        const form = document.getElementById('order-form');
+        form.reset(); form.classList.remove('was-validated');
+        form.classList.remove('d-none');
+        document.getElementById('order-success').classList.add('d-none');
+        document.getElementById('order-title').textContent = 'Customer details';
+        document.getElementById('order-total').textContent = cartTotal();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('orderModal')).show();
+    }
+    document.getElementById('cust-mobile').addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    });
+
+    function submitOrder(e) {
+        e.preventDefault();
+        const form = e.target;
+        form.classList.add('was-validated');
+        if (!form.checkValidity()) return;
+
+        const order = {
+            id: 'FK' + Date.now().toString().slice(-7),
+            name: document.getElementById('cust-name').value.trim(),
+            mobile: document.getElementById('cust-mobile').value,
+            address: document.getElementById('cust-address').value.trim(),
+            payment: form.querySelector('input[name="pay"]:checked').value,
+            items: Object.entries(cart).map(([n, i]) => ({ name: n, qty: i.qty, price: calcPrice(i.unit, i.qty) })),
+            total: cartTotal(),
+            time: new Date().toISOString()
+        };
+        try {
+            const all = JSON.parse(localStorage.getItem('foodkwik-orders')) || [];
+            all.push(order);
+            localStorage.setItem('foodkwik-orders', JSON.stringify(all));
+        } catch (err) {}
+
+        const box = document.getElementById('order-success');
+        box.innerHTML = `
+            <div style="font-size:3rem">✅</div>
+            <h4 class="my-2">Thank you, <span data-f="name"></span>!</h4>
+            <p class="mb-3">Your order <strong data-f="id"></strong> has been placed.</p>
+            <ul class="list-group text-start mb-3">
+                <li class="list-group-item d-flex justify-content-between"><span>Total</span><strong>₹<span data-f="total"></span></strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Payment</span><span data-f="payment"></span></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Mobile</span><span data-f="mobile"></span></li>
+                <li class="list-group-item"><small class="text-muted d-block">Delivering to</small><span data-f="address"></span></li>
+            </ul>
+            <button class="btn btn-success w-100" data-bs-dismiss="modal">Done</button>`;
+        box.querySelectorAll('[data-f]').forEach(el => { el.textContent = order[el.dataset.f]; });
+
+        form.classList.add('d-none');
+        box.classList.remove('d-none');
+        document.getElementById('order-title').textContent = 'Order placed';
+        clearCart();
+    }
+
+    // Back-to-top button appears after scrolling down
+    const toTop = document.getElementById('to-top');
+    window.addEventListener('scroll', () => toTop.classList.toggle('show', window.scrollY > 300), { passive: true });
+
+    // Open the cart with keyboard too
+    document.getElementById('cart-icon').addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.click(); }
+    });
+
+    // Remember the current page in the URL (#fruits etc.)
+    const _showView = showView;
+    showView = function (name) { _showView(name); history.replaceState(null, '', '#' + name); };
+    const start = location.hash.slice(1);
+    if (document.getElementById(start) && document.getElementById(start).classList.contains('view')) showView(start);
+    document.getElementById('stat-products').textContent = vegetables.length + fruits.length;
+    updateCartUI();
+</script>
+</body>
+</html>
